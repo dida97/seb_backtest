@@ -1,8 +1,9 @@
-# Virtual env
-seb_venv
+# yf data
+data/*.csv
+data/*.txt
 
 # Generated data 
-data/processed/
+backtester/data/processed/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -27,3 +27,6 @@ seb_backtest/
 │   ├── test_strategies.py
 ├── requirements.txt
 └── README.md
+
+TODO: 
+- upload sample data in data folder 
