@@ -3,9 +3,7 @@ import sys
 import os 
 from backtester.config import BKTConfig
 from backtester.data.manager import DataManager
-
-from trading_algo.config import AlgoConfig
-
+from trading_algo.algo import TradingAlgo
 
 
 def main():
@@ -17,11 +15,11 @@ def main():
     
     # Load configuration
     logger.debug("Loading Configuration")
-    config = BKTConfig() 
+    bkt_config = BKTConfig() 
 
     # Load data
     logger.info("Loading data...")
-    data_manager = DataManager(config)
+    data_manager = DataManager(bkt_config)
     data_manager.load_data()
 
     # Format and Clean data
@@ -30,7 +28,10 @@ def main():
     data_manager.clean_data()
 
     # Initialize the trading algorithm
+    logger.info("Initializing Trading Algorithm")
+    trading_algo = TradingAlgo(bkt_config, data_manager.return_data())
+    del data_manager
 
-        
+    
 if __name__ == "__main__":
     main()

@@ -1,6 +1,13 @@
 import pandas as pd
 from ..config import BKTConfig
 
+class MarketData: 
+    def __init__(self, daily_stocks:pd.DataFrame, intraday_stocks:pd.DataFrame, daily_index:pd.DataFrame, intraday_index:pd.DataFrame):
+        self.daily_stocks = daily_stocks
+        self.intraday_stocks = intraday_stocks
+        self.daily_index = daily_index
+        self.intraday_index = intraday_index
+
 class DataManager:
     def __init__(self, config:BKTConfig):
         self.config = config
@@ -46,3 +53,6 @@ class DataManager:
         self.daily_index.ffill()
         self.intraday_stocks.ffill()
         self.intraday_index.ffill()
+
+    def return_data(self) -> MarketData: 
+        return MarketData(self.daily_stocks, self.intraday_stocks, self.daily_index, self.intraday_index)
