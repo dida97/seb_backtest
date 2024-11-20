@@ -2,7 +2,8 @@ import logging
 import sys
 import os 
 from backtester.config import Config
-from backtester.data.loader import DataLoader
+from backtester.data.manager import DataManager
+
 
 
 def main():
@@ -18,8 +19,14 @@ def main():
 
     # Load data
     logger.info("Loading data...")
-    data_loader = DataLoader(config)
-    market_data = data_loader.load_data()
+    data_manager = DataManager(config)
+    data_manager.load_data()
+
+    # Format and Clean data
+    logger.info("Formatting and cleaning data")
+    data_manager.format_data()
+    data_manager.clean_data()
+
         
 if __name__ == "__main__":
     main()
