@@ -1,8 +1,8 @@
 import pandas as pd
-from ..config import Config
+from ..config import BKTConfig
 
 class DataManager:
-    def __init__(self, config:Config):
+    def __init__(self, config:BKTConfig):
         self.config = config
         self.daily_stocks = pd.DataFrame()
         self.intraday_stocks = pd.DataFrame()
