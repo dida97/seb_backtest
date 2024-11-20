@@ -6,9 +6,10 @@ class Config:
         self.data_dir = os.path.join(os.getcwd(), "data")
         self.sp500_tickers_file = os.path.join(self.data_dir, "sp500_tickers.txt")
         self.sp500_sectors_file = os.path.join(self.data_dir, "sp500_sectors.txt")
-        self.daily_data_file = os.path.join(self.data_dir, "daily_stocks.csv")
-        self.intraday_data_file = os.path.join(self.data_dir, "stocks_intraday.csv")
-        self.index_data_file = os.path.join(self.data_dir, "daily_index.csv")
+        self.daily_stocks_file = os.path.join(self.data_dir, "daily_stocks.csv")
+        self.intraday_stocks_file = os.path.join(self.data_dir, "intraday_stocks.csv")
+        self.daily_index_file = os.path.join(self.data_dir, "daily_index.csv")
+        self.intraday_index_file = os.path.join(self.data_dir, "intraday_index.csv")
 
         # Trading settings
         self.trading_day = "2023-09-11"
