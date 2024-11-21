@@ -72,9 +72,57 @@ class LongTermAnalysis:
 
 
 class ShortTermAnalysis: 
-    def __init__(self, trading_algo) -> None:
+    def __init__(self, trading_algo:'TradingAlgo') -> None:
         self.trading_algo = trading_algo
 
+    def intraday_trend_analysis(self, date):
+        def compute_returns(grouped_data):
+            cum_returns = {}
+            pct_rets = {}
+            for day, group in grouped_data:
+                intraday_data = group[pd.to_datetime("09:35:00").time() : pd.to_datetime("15:45:00").time()] #TODO start of the day should be parametrized 
+                pct_change = intraday_data.pct_change().fillna(0)
+                cum_ret = ((1 + pct_change).cumprod().fillna(1)) 
+                cum_returns[day] = cum_ret
+                pct_rets[day] = pct_change
+            return cum_returns, pct_rets
+
+        def find_trend_count(cum_rets: dict[pd.DataFrame], valid_companies, sign: str):
+            cum_rets_list = [elem.iloc[-1] for elem in cum_rets.values()]
+            cumprod_group = pd.concat(cum_rets_list, axis=1).T
+            if sign == "positive":
+                cumprod_group = cumprod_group[valid_companies]
+                trend_count = cumprod_group[cumprod_group[:] > 1]
+            else:
+                cumprod_group = cumprod_group[valid_companies]
+                trend_count = cumprod_group[cumprod_group[:] < 1]
+
+            return trend_count.count()
+
+
+        intraday_stocks = self.trading_algo.intraday_stocks.loc[self.trading_algo.algo_params.start_date_intraday : date, :]
+        intraday_index = self.trading_algo.intraday_index.loc[self.trading_algo.algo_params.start_date_intraday : date, :]
+
+        grouped_stocks = intraday_stocks.groupby(intraday_stocks.index.date)
+        grouped_index = intraday_index.groupby(intraday_index.index.date)
+
+        self.index_indtraday_cumrets = compute_returns(grouped_index)[0]
+        stock_returns = compute_returns(grouped_stocks)
+        self.stocks_intraday_cumrets = stock_returns[0]
+        self.stocks_intraday_rets = stock_returns[1]
+        valid_positive_intraday = [cmp for cmp in list(self.stocks_intraday_cumrets.values())[0].columns if cmp in self.trading_algo.stocks_pos_trend]
+        valid_negative_intraday = [cmp for cmp in list(self.stocks_intraday_cumrets.values())[0].columns if cmp in self.trading_algo.stocks_neg_trend]
+
+        # index_intraday_rets = compute_returns(grouped_index)
+        trend_count_positive = find_trend_count(self.stocks_intraday_cumrets, valid_positive_intraday, "positive").sort_values(ascending=False)
+        trend_count_negative = find_trend_count(self.stocks_intraday_cumrets, valid_negative_intraday, "negative").sort_values(ascending=False)
+
+        # stocks are ranked on the basis of how many days the intraday trend followed the multi-day trend
+        self.intraday_positive = trend_count_positive.index.to_list()
+        self.intraday_negative = trend_count_negative.index.to_list()
+
+    def perform_analysis(self, date): 
+        self.intraday_trend_analysis(date)
 
 class TradingAlgo: 
     def __init__(self, bkt_config:BKTConfig, market_data:MarketData) -> None:
@@ -91,8 +139,8 @@ class TradingAlgo:
         self.intraday_index = market_data.intraday_index
 
         # Return variables
-        self.daily_returns = pd.DataFrame()
-        self.cumul_daily_returns = pd.DataFrame()
+        self.daily_returns = pd.DataFrame() # TODO consider to add as attribute of LongTermAnalysis
+        # self.cumul_daily_returns = pd.DataFrame()
 
         # daily ranked companies
         ## trend direction analsys
@@ -112,6 +160,7 @@ class TradingAlgo:
         self.daily_returns = (self.daily_stocks.loc[self.algo_params.start_date_daily: date, :].pct_change())
         self.long_term_analysis.perform_analysis()
         self.long_term_analysis.aggregate_daily_analysis()
+        self.short_term_analysis.perform_analysis(date)
 
     def stop(self): 
         pass

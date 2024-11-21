@@ -12,8 +12,8 @@ class AlgoParameters:
         self.ranking_days = 10
         self.reshuffle_frequency = 1
 
-        self.trading_day = "2024-10-21"
+        self.trading_day = "2024-10-21" # TODO these dates need to be expressed better 
 
         # set when to start the daily and the intraday analysis # TODO rivedere
-        self.start_date_daily = (datetime.strptime(self.trading_day, "%Y-%m-%d") - pd.DateOffset(months=3))
-        self.start_date_intraday = (datetime.strptime(self.trading_day, "%Y-%m-%d")- BDay(20))
+        self.start_date_daily = datetime.strftime((datetime.strptime(self.trading_day, "%Y-%m-%d") - pd.DateOffset(months=3)), "%Y-%m-%d")
+        self.start_date_intraday = datetime.strftime((datetime.strptime(self.trading_day, "%Y-%m-%d")- BDay(20)), "%Y-%m-%d")
