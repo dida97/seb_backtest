@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 from trading_algo.parameters import AlgoParameters
 
@@ -35,3 +36,40 @@ def trend_stability_analysis(daily_returns:pd.DataFrame, positive_stocks:pd.Data
 
     return positive_stocks_stable, negative_stocks_stable
     
+def daily_var_analysis(daily_returns:pd.DataFrame, stocks_pos_trend:pd.DataFrame, stocks_neg_trend:pd.DataFrame):
+    
+    # Calculate daily VaR for each stock with positive trend
+    pos_var_stocks = {}
+    daily_var_for_stocks(pos_var_stocks, daily_returns, stocks_pos_trend)
+
+    # Calculate daily VaR for each stock with negative trend
+    neg_var_stocks = {}
+    daily_var_for_stocks(neg_var_stocks, daily_returns, stocks_neg_trend)
+
+    sorted_positive_companies = sorted(pos_var_stocks.items(), key=lambda x: x[1], reverse=True)
+    sorted_negative_companies = sorted(neg_var_stocks.items(), key=lambda x: x[1], reverse=True)
+
+    # ordered by safest companies
+    top_var_positive = list(dict(sorted_positive_companies).keys())
+    top_var_negative = list(dict(sorted_negative_companies).keys())
+
+    return top_var_positive, top_var_negative
+
+def daily_var_for_stocks(stocks_vars:dict, daily_returns:pd.DataFrame, stocks):
+    for stock in stocks:
+        stock_daily_returns = daily_returns[stock]
+        var = compute_var(stock_daily_returns)
+        stocks_vars[stock] = var
+
+
+def compute_var(returns: pd.DataFrame):
+        returns.dropna(inplace=True)
+        confidence_level = 0.05
+        # Calculate the mean and standard deviation of daily returns
+        mean_return = returns.mean()
+        std_dev = returns.std()
+
+        # Calculate the Z-score for the confisdence level
+        z_score = np.percentile(returns, 100 * (1 - confidence_level))
+        var = mean_return - z_score * std_dev
+        return var
