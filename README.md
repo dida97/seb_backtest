@@ -31,4 +31,5 @@ seb_backtest/
 ```
 
 TODO: 
-- upload sample data in data folder 
+- specify that you can use proprietary data but the format must be the same as the yfinance data
+- 

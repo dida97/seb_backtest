@@ -24,6 +24,7 @@ requests==2.32.3
 seaborn==0.13.2
 six==1.16.0
 soupsieve==2.6
+tqdm==4.67.0
 tzdata==2024.2
 urllib3==2.2.3
 webencodings==0.5.1
