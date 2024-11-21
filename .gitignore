@@ -1,3 +1,6 @@
+# VSC
+.vscode/
+
 # yf data
 data/*.csv
 data/*.txt
