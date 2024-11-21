@@ -26,7 +26,11 @@ class TradingAlgo:
         self.stocks_neg_trend = pd.DataFrame()
 
 
-    def long_term_analysis(self): 
-        self.stocks_pos_trend, self.stocks_neg_trend = long_term.trend_direction_analysis(self.daily_stocks, self.algo_params)
+    def long_term_analysis(self, date): 
+        self.stocks_pos_trend, self.stocks_neg_trend = long_term.trend_direction_analysis(self.daily_stocks, date, self.algo_params)
 
-        
+    def run(self, date): 
+        self.long_term_analysis(date) 
+
+    def stop(self): 
+        pass

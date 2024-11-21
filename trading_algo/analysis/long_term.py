@@ -2,7 +2,7 @@ import pandas as pd
 from trading_algo.parameters import AlgoParameters
 
 
-def trend_direction_analysis(daily_stocks:pd.DataFrame, algo_params:AlgoParameters):
+def trend_direction_analysis(daily_stocks:pd.DataFrame, date, algo_params:AlgoParameters):
     daily_returns = (daily_stocks.loc[algo_params.start_date_daily: algo_params.trading_day, :].pct_change())
 
     cumulative_returns = (1 + daily_returns).ewm(span=algo_params.daily_ewm_window).mean()
