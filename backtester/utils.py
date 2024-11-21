@@ -1,4 +1,6 @@
 import os
+
+import pandas as pd
 from backtester.config import BKTConfig
 from backtester.data.downloader import DataDownloader
 
