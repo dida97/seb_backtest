@@ -27,10 +27,13 @@ class TradingAlgo:
 
 
     def long_term_analysis(self, date): 
-        self.stocks_pos_trend, self.stocks_neg_trend = long_term.trend_direction_analysis(self.daily_stocks, date, self.algo_params)
+        daily_returns = (self.daily_stocks.loc[self.algo_params.start_date_daily: date, :].pct_change())
+        self.stocks_pos_trend, self.stocks_neg_trend = long_term.trend_direction_analysis(daily_returns, self.algo_params)
+        self.pos_stocks_stable, self.neg_stocks_stable = long_term.trend_stability_analysis(daily_returns, self.stocks_pos_trend, self.stocks_neg_trend)
+
 
     def run(self, date): 
-        self.long_term_analysis(date) 
+        self.long_term_analysis(date)
 
     def stop(self): 
         pass
