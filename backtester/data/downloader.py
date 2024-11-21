@@ -37,12 +37,12 @@ class DataDownloader:
         self.logger.debug(f"Downloading daily data from {start_date.date()} to {end_date.date()}...")
         
         # Download data
-        stocks_data = yf.download(self.sp500_tickers, start=start_date, end=end_date, interval="1d")
-        index_data = yf.download(self.index_ticker, start=start_date, end=end_date, interval="1d")
+        stocks_data = yf.download(self.sp500_tickers, start=start_date, end=end_date, interval="1d")["Close"]
+        index_data = yf.download(self.index_ticker, start=start_date, end=end_date, interval="1d")["Close"]
         
         # Save to CSV
-        stocks_data.to_csv(f"{self.data_path}daily_stocks.csv")
-        index_data.to_csv(f"{self.data_path}daily_index.csv")
+        stocks_data.to_csv(self.bkt_config.daily_stocks_file)
+        index_data.to_csv(self.bkt_config.daily_index_file)
         
         self.logger.debug("Daily data downloaded and saved.")
 
@@ -56,12 +56,12 @@ class DataDownloader:
         self.logger.debug(f"Downloading intraday 2-minute data from {start_date.date()} to {end_date.date()}...")
         
         # Download data
-        stocks_data = yf.download(self.sp500_tickers, start=start_date, end=end_date, interval="2m")
-        index_data = yf.download(self.index_ticker, start=start_date, end=end_date, interval="2m")
+        stocks_data = yf.download(self.sp500_tickers, start=start_date, end=end_date, interval="2m")["Close"]
+        index_data = yf.download(self.index_ticker, start=start_date, end=end_date, interval="2m")["Close"]
         
         # Save to CSV
-        stocks_data.to_csv(f"{self.data_path}stocks_intraday.csv")
-        index_data.to_csv(f"{self.data_path}index_intraday.csv")
+        stocks_data.to_csv(self.bkt_config.intraday_stocks_file)
+        index_data.to_csv(self.bkt_config.intraday_index_file)
         
         self.logger.debug("Intraday data downloaded and saved.")
 

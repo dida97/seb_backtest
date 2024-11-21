@@ -4,6 +4,7 @@ import os
 from backtester.config import BKTConfig
 from backtester.data.manager import DataManager
 from trading_algo.algo import TradingAlgo
+import backtester.utils as utils
 
 
 def main():
@@ -11,6 +12,9 @@ def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
     logger = logging.getLogger(__name__)
     
+    # Ensure data availability
+    utils.ensure_data_availability()
+
     logger.info("Starting Simplified Event-Based Backtest...")
     
     # Load configuration

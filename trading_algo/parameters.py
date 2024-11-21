@@ -12,8 +12,8 @@ class AlgoParameters:
         self.ranking_days = 10
         self.reshuffle_frequency = 1
 
-        self.trading_day = "2023-09-11"
+        self.trading_day = "2024-10-21"
 
-        # set when to start the daily and the intraday analysis
+        # set when to start the daily and the intraday analysis # TODO rivedere
         self.start_date_daily = (datetime.strptime(self.trading_day, "%Y-%m-%d") - pd.DateOffset(months=3))
         self.start_date_intraday = (datetime.strptime(self.trading_day, "%Y-%m-%d")- BDay(20))

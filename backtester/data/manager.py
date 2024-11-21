@@ -21,10 +21,10 @@ class DataManager:
         Load and return the datasets for S&P500 stocks and indices.
         """
         try:
-            self.daily_stocks = pd.read_csv(self.config.daily_stocks_file, sep=";")
-            self.intraday_stocks = pd.read_csv(self.config.intraday_stocks_file, sep=";")
-            self.daily_index = pd.read_csv(self.config.daily_index_file, sep=";")
-            self.intraday_index = pd.read_csv(self.config.intraday_index_file, sep=";")
+            self.daily_stocks = pd.read_csv(self.config.daily_stocks_file, sep=",")
+            self.intraday_stocks = pd.read_csv(self.config.intraday_stocks_file, sep=",")
+            self.daily_index = pd.read_csv(self.config.daily_index_file, sep=",")
+            self.intraday_index = pd.read_csv(self.config.intraday_index_file, sep=",")
 
             
         except FileNotFoundError as e:
@@ -35,10 +35,10 @@ class DataManager:
         """
         Format mrket_data so that the index column is Datetime.
         """
-        self.daily_stocks["Date"] = pd.to_datetime(self.daily_stocks["Date"], dayfirst=True)
-        self.daily_index["Date"] = pd.to_datetime(self.daily_index["Date"], dayfirst=True)
-        self.intraday_stocks["Datetime"] = pd.to_datetime(self.intraday_stocks["Datetime"], dayfirst=True)
-        self.intraday_index["Datetime"] = pd.to_datetime(self.intraday_index["Datetime"], dayfirst=True)
+        self.daily_stocks["Date"] = pd.to_datetime(self.daily_stocks["Date"])
+        self.daily_index["Date"] = pd.to_datetime(self.daily_index["Date"])
+        self.intraday_stocks["Datetime"] = pd.to_datetime(self.intraday_stocks["Datetime"])
+        self.intraday_index["Datetime"] = pd.to_datetime(self.intraday_index["Datetime"])
         
         self.daily_stocks.set_index("Date", inplace=True)
         self.daily_index.set_index("Date", inplace=True)
