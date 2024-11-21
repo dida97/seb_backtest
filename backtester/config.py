@@ -12,7 +12,6 @@ class BKTConfig:
         self.intraday_index_file = os.path.join(self.data_dir, "intraday_index.csv")
         
         # Backtest settings
-        self.trading_day = "2023-09-11"
         self.instruments_number = 5
         self.notional = 1_000_000
         

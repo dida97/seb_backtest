@@ -32,6 +32,8 @@ def main():
     trading_algo = TradingAlgo(bkt_config, data_manager.return_data())
     del data_manager
 
+    trading_algo.long_term_analysis()
+
     
 if __name__ == "__main__":
     main()
