@@ -1,3 +1,4 @@
+```
 seb_backtest/
 ├── data/
 │   ├── sp500_tickers.txt
@@ -27,6 +28,7 @@ seb_backtest/
 │   ├── test_strategies.py
 ├── requirements.txt
 └── README.md
+```
 
 TODO: 
 - upload sample data in data folder 
