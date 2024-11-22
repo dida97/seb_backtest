@@ -79,6 +79,8 @@ class ShortTermAnalysis:
         self.stocks_intraday_cumrets = pd.DataFrame()
         
         # Stocks' rankings for intraday analysis
+        self.intraday_positive = pd.DataFrame()
+        self.intraday_negative = pd.DataFrame()
         self.intraday_max_dd_pos = pd.DataFrame()
         self.intraday_max_dd_neg = pd.DataFrame()
         self.intraday_var_pos = pd.DataFrame()
@@ -159,6 +161,10 @@ class ShortTermAnalysis:
         self.intraday_trend_analysis(date)
         self.intraday_stability_analysis()
 
+    def aggregate_intraday_analysis(self): 
+        self.best_positive_intraday = algo_utils.rank_lists([self.intraday_positive,self.intraday_max_dd_pos.index,self.intraday_var_pos.index,], self.trading_algo.stocks_ranking_dictionary)
+        self.best_negative_intraday = algo_utils.rank_lists([self.intraday_negative,self.intraday_max_dd_neg.index,self.intraday_var_neg.index,], self.trading_algo.stocks_ranking_dictionary)
+
 class TradingAlgo: 
     def __init__(self, bkt_config:BKTConfig, market_data:MarketData) -> None:
         self.bkt_config = bkt_config
@@ -191,6 +197,21 @@ class TradingAlgo:
         self.stocks_ranking_dictionary = {}
 
 
+
+    def aggregate_total_analysis(self):
+        self.best_positive = algo_utils.rank_lists([self.long_term_analysis.best_positive_daily, self.short_term_analysis.best_positive_intraday], self.stocks_ranking_dictionary)
+        self.best_negative = algo_utils.rank_lists([self.long_term_analysis.best_negative_daily, self.short_term_analysis.best_negative_intraday], self.stocks_ranking_dictionary)
+
+        # The number of stocks to buy and to sell is determined on the basis 
+        # of the length of self.best_positive and self.best_negative
+        majority_leg = int(self.bkt_config.instruments_number / 2) + 1
+        minority_leg = self.bkt_config.instruments_number - majority_leg
+        long_instr_n = (majority_leg if len(self.best_positive) > len(self.best_negative) else minority_leg)
+        short_instr_n = self.bkt_config.instruments_number - long_instr_n
+        
+        instruments_list = (self.best_negative[:short_instr_n] + self.best_positive[:long_instr_n])
+        self.global_sorted = sorted([stock for stock in self.stocks_ranking_dictionary.items() if stock[0] in instruments_list],key=lambda x: x[1],reverse=True)
+
     def run(self, date): 
         self.daily_returns = (self.daily_stocks.loc[self.algo_params.start_date_daily: date, :].pct_change(fill_method=None))
         # Daily analysis
@@ -199,6 +220,11 @@ class TradingAlgo:
         
         # Intraday analysis
         self.short_term_analysis.perform_analysis(date)
+        self.short_term_analysis.aggregate_intraday_analysis()
+
+        # Total analysis
+        self.aggregate_total_analysis()
+
 
     def stop(self): 
         pass
