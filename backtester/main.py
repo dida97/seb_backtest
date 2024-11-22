@@ -26,7 +26,6 @@ class Backtester:
         for date in tqdm(self.backtest_days): # We should not use trading_day because we can use date
             date = datetime.strftime(date, "%Y-%m-%d")
             if not self.algo.stop(): 
-                
                 # Let the algo perform its actions
                 self.algo.run(date)
 

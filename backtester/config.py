@@ -16,12 +16,12 @@ class BKTConfig:
         self.notional = 1_000_000
         
         # Trading algo settings
-        self.long_trend_days = 120
+        self.LONG_TREND_DAYS = 120
         
         self.daily_analysis_days = 180
         self.intraday_analysis_days = 60
-        self.ranking_days = 10
-        self.reshuffle_frequency = 1
+        self.RANKING_DAYS = 10
+        self.RESHUFFLE_FREQUENCY = 1
 
         # Output settings
         self.results_dir = os.path.join(os.getcwd(), "results")
