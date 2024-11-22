@@ -216,7 +216,7 @@ class TradingAlgo:
         each tuple inside is first converted into a list, so that its content is modifiable
         at the end, the lists are converted back to tuples 
         """
-        weight_total = sum([stock[1] for stock in self.selected_stocks_with_scores])
+        scores_sum = sum([stock[1] for stock in self.selected_stocks_with_scores])
 
         for idx, stock in enumerate(self.selected_stocks_with_scores):
             stock = list(stock)
@@ -228,10 +228,10 @@ class TradingAlgo:
             else:
                 stock.append(-1)
 
-            stock[1] = int((weight / weight_total) * self.bkt_config.notional)
+            stock[1] = int((weight / scores_sum) * self.bkt_config.notional)
 
             self.selected_stocks_with_scores[idx] = tuple(stock)
-            self.portfolio = [stock[0] for stock in self.selected_stocks_with_scores]
+        self.portfolio = [stock[0] for stock in self.selected_stocks_with_scores]
 
     def run(self, date): 
         self.daily_returns = (self.daily_stocks.loc[self.algo_params.start_date_daily: date, :].pct_change(fill_method=None))
@@ -245,8 +245,9 @@ class TradingAlgo:
 
         # Total analysis
         self.aggregate_total_analysis()
-        
+
         # Portfolio construction 
+        self.create_portfolio()
 
 
     def stop(self): 
