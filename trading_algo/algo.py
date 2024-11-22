@@ -181,8 +181,7 @@ class TradingAlgo:
 
         # Return variables
         self.daily_returns = pd.DataFrame() # TODO consider to add as attribute of LongTermAnalysis
-        # self.cumul_daily_returns = pd.DataFrame()
-
+        
         # Stock's ranking for daily analysis
         ## trend direction analsys
         self.stocks_pos_trend = pd.DataFrame()
@@ -195,9 +194,8 @@ class TradingAlgo:
         self.neg_stock_best_var = pd.DataFrame()
 
         self.stocks_ranking_dictionary = {}
-
-
-
+        self.selected_stocks_with_scores = list()
+        
     def aggregate_total_analysis(self):
         self.best_positive = algo_utils.rank_lists([self.long_term_analysis.best_positive_daily, self.short_term_analysis.best_positive_intraday], self.stocks_ranking_dictionary)
         self.best_negative = algo_utils.rank_lists([self.long_term_analysis.best_negative_daily, self.short_term_analysis.best_negative_intraday], self.stocks_ranking_dictionary)
@@ -210,7 +208,30 @@ class TradingAlgo:
         short_instr_n = self.bkt_config.instruments_number - long_instr_n
         
         instruments_list = (self.best_negative[:short_instr_n] + self.best_positive[:long_instr_n])
-        self.global_sorted = sorted([stock for stock in self.stocks_ranking_dictionary.items() if stock[0] in instruments_list],key=lambda x: x[1],reverse=True)
+        self.selected_stocks_with_scores = sorted([stock for stock in self.stocks_ranking_dictionary.items() if stock[0] in instruments_list],key=lambda x: x[1],reverse=True)
+
+    def create_portfolio(self):
+        """
+        self.selected_stocks_with_scores is [('AAPL', 1000), ('MSFT', 2000), ...]
+        each tuple inside is first converted into a list, so that its content is modifiable
+        at the end, the lists are converted back to tuples 
+        """
+        weight_total = sum([stock[1] for stock in self.selected_stocks_with_scores])
+
+        for idx, stock in enumerate(self.selected_stocks_with_scores):
+            stock = list(stock)
+            name = stock[0]
+            weight = stock[1]
+            # check sign of the trend of the company
+            if name in self.short_term_analysis.intraday_positive:
+                stock.append(1)
+            else:
+                stock.append(-1)
+
+            stock[1] = int((weight / weight_total) * self.bkt_config.notional)
+
+            self.selected_stocks_with_scores[idx] = tuple(stock)
+            self.portfolio = [stock[0] for stock in self.selected_stocks_with_scores]
 
     def run(self, date): 
         self.daily_returns = (self.daily_stocks.loc[self.algo_params.start_date_daily: date, :].pct_change(fill_method=None))
@@ -224,6 +245,8 @@ class TradingAlgo:
 
         # Total analysis
         self.aggregate_total_analysis()
+        
+        # Portfolio construction 
 
 
     def stop(self): 
