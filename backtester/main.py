@@ -31,10 +31,6 @@ class Backtester:
                 self.algo.run(date)
 
 
-                
-
-
-
 def main():
     # Initialize logging
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")

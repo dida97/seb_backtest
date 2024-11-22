@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 
 from trading_algo.parameters import AlgoParameters
@@ -75,13 +76,21 @@ class ShortTermAnalysis:
     def __init__(self, trading_algo:'TradingAlgo') -> None:
         self.trading_algo = trading_algo
 
+        self.stocks_intraday_cumrets = pd.DataFrame()
+        
+        # Stocks' rankings for intraday analysis
+        self.intraday_max_dd_pos = pd.DataFrame()
+        self.intraday_max_dd_neg = pd.DataFrame()
+        self.intraday_var_pos = pd.DataFrame()
+        self.intraday_var_neg = pd.DataFrame()
+
     def intraday_trend_analysis(self, date):
         def compute_returns(grouped_data):
             cum_returns = {}
             pct_rets = {}
             for day, group in grouped_data:
                 intraday_data = group[pd.to_datetime("09:35:00").time() : pd.to_datetime("15:45:00").time()] #TODO start of the day should be parametrized 
-                pct_change = intraday_data.pct_change().fillna(0)
+                pct_change = intraday_data.pct_change(fill_method=None).fillna(0)
                 cum_ret = ((1 + pct_change).cumprod().fillna(1)) 
                 cum_returns[day] = cum_ret
                 pct_rets[day] = pct_change
@@ -121,8 +130,34 @@ class ShortTermAnalysis:
         self.intraday_positive = trend_count_positive.index.to_list()
         self.intraday_negative = trend_count_negative.index.to_list()
 
+    def intraday_stability_analysis(self):
+        # drawdown, rsi, VaR
+
+        for day, df in self.stocks_intraday_cumrets.items():
+
+            # drawdown
+            self.intraday_max_dd_pos = algo_utils.intraday_max_drawdown(self.intraday_max_dd_pos, df, self.intraday_positive)
+            self.intraday_max_dd_neg = algo_utils.intraday_max_drawdown(self.intraday_max_dd_neg, df, self.intraday_negative)
+
+            # var
+            self.intraday_var_pos = algo_utils.intraday_var(day, self.intraday_var_pos, self.stocks_intraday_rets, self.intraday_positive)
+            self.intraday_var_neg = algo_utils.intraday_var(day, self.intraday_var_neg, self.stocks_intraday_rets, self.intraday_negative, negative_returns=True)
+       
+        
+        self.intraday_max_dd_neg = (self.intraday_max_dd_neg.T.ewm(span=5, min_periods=1).mean().iloc[-1]) # TODO ewm 1 week -> parametrize
+        self.intraday_max_dd_pos = (self.intraday_max_dd_pos.T.ewm(span=5, min_periods=1).mean().iloc[-1])
+        self.intraday_var_pos = (self.intraday_var_pos.T.ewm(span=5, min_periods=1).mean().iloc[-1])
+        self.intraday_var_neg = (self.intraday_var_neg.T.ewm(span=5, min_periods=1).mean().iloc[-1])
+
+        self.intraday_max_dd_neg = self.intraday_max_dd_neg.sort_values(ascending=False)
+        self.intraday_max_dd_pos = self.intraday_max_dd_pos.sort_values(ascending=False)
+        self.intraday_var_pos = self.intraday_var_pos.sort_values(ascending=False)
+        self.intraday_var_neg = self.intraday_var_neg.sort_values(ascending=False)  
+    
+    
     def perform_analysis(self, date): 
         self.intraday_trend_analysis(date)
+        self.intraday_stability_analysis()
 
 class TradingAlgo: 
     def __init__(self, bkt_config:BKTConfig, market_data:MarketData) -> None:
@@ -142,7 +177,7 @@ class TradingAlgo:
         self.daily_returns = pd.DataFrame() # TODO consider to add as attribute of LongTermAnalysis
         # self.cumul_daily_returns = pd.DataFrame()
 
-        # daily ranked companies
+        # Stock's ranking for daily analysis
         ## trend direction analsys
         self.stocks_pos_trend = pd.DataFrame()
         self.stocks_neg_trend = pd.DataFrame()
@@ -157,9 +192,12 @@ class TradingAlgo:
 
 
     def run(self, date): 
-        self.daily_returns = (self.daily_stocks.loc[self.algo_params.start_date_daily: date, :].pct_change())
+        self.daily_returns = (self.daily_stocks.loc[self.algo_params.start_date_daily: date, :].pct_change(fill_method=None))
+        # Daily analysis
         self.long_term_analysis.perform_analysis()
         self.long_term_analysis.aggregate_daily_analysis()
+        
+        # Intraday analysis
         self.short_term_analysis.perform_analysis(date)
 
     def stop(self): 

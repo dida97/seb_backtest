@@ -28,3 +28,19 @@ def value_at_risk(returns: pd.DataFrame):
         z_score = np.percentile(returns, 100 * (1 - confidence_level))
         var = mean_return - z_score * std_dev
         return var
+
+def intraday_max_drawdown(max_drawdown_df, cumul_rets_df:pd.DataFrame, stocks_df:pd.DataFrame): 
+    drawdown = (cumul_rets_df[stocks_df] / cumul_rets_df[stocks_df].cummax() - 1)
+    max_drawdown = abs(drawdown.min())
+
+    return pd.concat([max_drawdown_df, max_drawdown], axis=1)
+
+def intraday_var(day, var_df, intraday_stocks_returns:pd.DataFrame, stocks_df:pd.DataFrame, negative_returns=False): 
+    confidence = 0.05
+    returns_sign_correction = -1 if negative_returns else 1 # *-1 because we want the sign to be positive for VaR computation
+    returns = intraday_stocks_returns[day][stocks_df] * returns_sign_correction
+    zscore = np.percentile(returns ,100 * (1 - confidence))
+    mean = intraday_stocks_returns[day][stocks_df].mean()
+    std = intraday_stocks_returns[day][stocks_df].std()
+    var = mean - zscore * std
+    return pd.concat([var_df, var], axis=1)
