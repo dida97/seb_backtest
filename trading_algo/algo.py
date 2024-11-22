@@ -112,8 +112,8 @@ class ShortTermAnalysis:
             return trend_count.count()
 
 
-        intraday_stocks = self.trading_algo.intraday_stocks.loc[self.trading_algo.algo_params.start_date_intraday : date, :]
-        intraday_index = self.trading_algo.intraday_index.loc[self.trading_algo.algo_params.start_date_intraday : date, :]
+        intraday_stocks = self.trading_algo.intraday_stocks.loc[self.trading_algo.start_date_intraday : date, :]
+        intraday_index = self.trading_algo.intraday_index.loc[self.trading_algo.start_date_intraday : date, :]
 
         grouped_stocks = intraday_stocks.groupby(intraday_stocks.index.date)
         grouped_index = intraday_index.groupby(intraday_index.index.date)
@@ -181,6 +181,8 @@ class TradingAlgo:
         self.intraday_index = market_data.intraday_index
 
         # Useful variables 
+        self.start_date_daily = datetime.min
+        self.start_date_intraday = datetime.min
         self.bkt_days_count = 1
         self.daily_prt_beta_list = []        
 
@@ -245,22 +247,22 @@ class TradingAlgo:
         tot_intraday_stocks_returns = pd.concat(self.short_term_analysis.stocks_intraday_cumrets)
         tot_intraday_index_returns = pd.concat(self.short_term_analysis.index_indtraday_cumrets)
         total_intraday_cumrets = pd.concat([tot_intraday_stocks_returns[self.portfolio], tot_intraday_index_returns],axis=1)
-        total_intrday_returns = total_intraday_cumrets.pct_change().fillna(0)
+        total_intrday_returns = total_intraday_cumrets.pct_change(fill_method=None).fillna(0)
 
         cov_matrix = total_intrday_returns.cov()
 
-        market_var = cov_matrix["idx"]["idx"]
+        market_var = cov_matrix["^GSPC"]["^GSPC"]
 
         # Step 1 compute stocks values
         beta_values = {}
         for ticker in total_intrday_returns.columns[:-1]:
-            cov = cov_matrix["idx"][ticker]
+            cov = cov_matrix["^GSPC"][ticker]
             beta = cov / market_var
             beta_values[ticker] = beta
 
         # Step 2 compute initial portfolio beta
         portfolio_beta = 0
-        for ticker, weight, position in self.global_sorted:
+        for ticker, weight, position in self.selected_stocks_with_scores:
             weight = abs(weight) / total_invested
             stock_beta = (beta_values[ticker] if ticker in beta_values else 0)  # Use 0 if beta is not available
             portfolio_beta += (weight * stock_beta * position)
@@ -272,9 +274,9 @@ class TradingAlgo:
     def reset_daily_ranking(self, date): 
         trading_day = datetime.strptime(date, "%Y-%m-%d")
         trading_day = np.datetime64(trading_day, 'D')
-        start_date_daily = np.datetime64(self.algo_params.start_date_daily, 'D')
+        start_date_daily = np.datetime64(self.start_date_daily, 'D')
         business_days = np.busday_count(start_date_daily, trading_day)
-        if business_days >= 76: # TODO 3 months -> parametrize
+        if business_days >= 132: # TODO 6 months -> parametrize
             return True
         else:
             return False 
@@ -282,42 +284,18 @@ class TradingAlgo:
     def reset_intraday_ranking(self, date): 
         trading_day = datetime.strptime(date, "%Y-%m-%d")
         trading_day = np.datetime64(trading_day, 'D')
-        start_date_intraday = np.datetime64(self.algo_params.start_date_intraday, 'D')
+        start_date_intraday = np.datetime64(self.start_date_intraday, 'D')
         business_days = np.busday_count(start_date_intraday, trading_day)
-        if business_days >= 22: # TODO 1 month -> parametrize
+        if business_days >= 44: # TODO 2 month -> parametrize
             return True
         else:
             return False
 
-    def start_trading(self, date): 
-        stocks_target_data = self.intraday_stocks.loc[date, self.portfolio]
-        index_target_data = self.intraday_index.loc[date]
-        target_data = pd.concat([stocks_target_data, index_target_data], axis=1)
-        target_data = target_data[pd.to_datetime("09:35:00").time() : pd.to_datetime("15:45:00").time()] # TODO these should be parametrized
-
-        pct_returns = target_data.ffill().pct_change().fillna(0)
-        pct_cumret = (pct_returns + 1).cumprod() - 1
-        
-        end_of_day_notional = pd.DataFrame()
-        for instrument in self.portfolio + ["idx"]:
-            for spec in self.stocks_ranking_dictionary:
-                if instrument in spec:
-                    size = spec[1]
-                    pos_sign = spec[2]
-            end_of_day_notional = pd.concat([end_of_day_notional,pd.DataFrame(((pct_cumret[instrument] * size * pos_sign) + size)),],axis=1)
-
-        idx_cumret = pct_cumret["idx"]
-        idx_end_of_day_notional = idx_cumret * self.bkt_config.notional + self.bkt_config.notional
-        if self.algo_params.INCLUDE_INDEX == False: 
-            end_of_day_notional = end_of_day_notional.drop(columns=["idx"])
-
-
     def run(self, date): 
         # Set the start dates for daily and intraday analyses 
-        self.start_date_daily = (datetime.strptime(date, "%Y-%m-%d") - pd.DateOffset(months=3)) 
-        self.start_date_intraday = (datetime.strptime(date, "%Y-%m-%d") - pd.DateOffset(months=1))
 
-        self.daily_returns = (self.daily_stocks.loc[self.algo_params.start_date_daily: date, :].pct_change(fill_method=None))
+        self.daily_returns = (self.daily_stocks.loc[self.start_date_daily: date, :].pct_change(fill_method=None))
+
         # PRE TRADE ANALYSIS
         ## Daily analysis
         self.long_term_analysis.perform_analysis()
@@ -335,17 +313,16 @@ class TradingAlgo:
         self.compute_portfolio_beta()
 
         # START_TRADING
-        self.start_trading(date)
 
         # Check if the ranking dictionary needs to be reset
         if self.reset_daily_ranking(date): 
             self.stocks_ranking_dictionary = {}
             # Reset daily start date to 3 months prior 
-            self.start_date_daily = (datetime.strptime(date, "%Y-%m-%d") - pd.DateOffset(months=3)) 
+            self.start_date_daily = datetime.strftime(datetime.strptime(date, "%Y-%m-%d") - pd.DateOffset(months=3), format="%Y-%m-%d")
 
         if self.reset_intraday_ranking(date): 
             # Reset intraday start date to 3 months prior 
-            self.start_date_intraday = (datetime.strptime(date, "%Y-%m-%d") - pd.DateOffset(months=1))
+            self.start_date_intraday = datetime.strftime(datetime.strptime(date, "%Y-%m-%d") - pd.DateOffset(months=1), format="%Y-%m-%d")
 
     def stop(self): 
         pass

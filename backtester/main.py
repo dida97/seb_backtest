@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime
+import pandas as pd
 from tqdm import tqdm
 import sys
 import os 
@@ -11,20 +12,27 @@ import backtester.utils as utils
 class Backtester: 
     def __init__(self, trading_algo:TradingAlgo) -> None:
         self.algo = trading_algo
-        self.backtest_day = datetime.strptime(self.algo.algo_params.trading_day, "%Y-%m-%d")
+        
         self.backtest_days = self.get_backtest_days()
         
 
     def get_backtest_days(self): 
-        backtest_days = self.algo.daily_stocks.loc[self.algo.algo_params.trading_day:]
-        return sorted(set(backtest_days.index), reverse=False)
+        first_day = datetime.strftime(self.algo.intraday_stocks.index.date[0] + pd.DateOffset(days=15), format="%Y-%m-%d")
+
+        backtest_days = self.algo.intraday_stocks.loc[first_day:]
+        return sorted(set(backtest_days.index.date), reverse=False)
 
     def start_backtest(self): 
         """
         For each day we convert the date to a string... For the moment it is too much refactoring to use only datetimes
         """
+
+        self.algo.start_date_daily = datetime.strftime(self.backtest_days[0] - pd.DateOffset(months=3), format="%Y-%m-%d")
+        self.algo.start_date_intraday = datetime.strftime(self.backtest_days[0] - pd.DateOffset(months=1), format="%Y-%m-%d")
+        
         for date in tqdm(self.backtest_days): # We should not use trading_day because we can use date
             date = datetime.strftime(date, "%Y-%m-%d")
+
             if not self.algo.stop(): 
                 # Let the algo perform its actions
                 self.algo.run(date)

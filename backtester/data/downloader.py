@@ -32,7 +32,7 @@ class DataDownloader:
         Downloads daily data for the S&P 500 stocks and index for the last 6 months.
         """
         end_date = datetime.now()
-        start_date = end_date - timedelta(days=self.bkt_config.daily_analysis_days)  # Approximately 6 months
+        start_date = end_date - timedelta(days=self.bkt_config.daily_data_days)  # Approximately 6 months
         
         self.logger.debug(f"Downloading daily data from {start_date.date()} to {end_date.date()}...")
         
@@ -51,7 +51,7 @@ class DataDownloader:
         Downloads 2-minute intraday data for the S&P 500 stocks and index for the last 60 days.
         """
         end_date = datetime.now()
-        start_date = end_date - timedelta(days=self.bkt_config.intraday_analysis_days)
+        start_date = end_date - timedelta(days=self.bkt_config.intraday_data_days)
         
         self.logger.debug(f"Downloading intraday 2-minute data from {start_date.date()} to {end_date.date()}...")
         

@@ -18,8 +18,12 @@ class BKTConfig:
         # Trading algo settings
         self.LONG_TREND_DAYS = 120
         
-        self.daily_analysis_days = 180
-        self.intraday_analysis_days = 60
+        self.daily_data_days = 180
+        self.intraday_data_days = 60        
+
+        # we use this as a starting point for backtest start (meaning 2 weeks after the first intraday data day)
+        self.intraday_days_buffer = 14 
+
         self.RANKING_DAYS = 10
         self.RESHUFFLE_FREQUENCY = 1
 
