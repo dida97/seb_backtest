@@ -30,20 +30,20 @@ class DataManager:
         except FileNotFoundError as e:
             raise Exception(f"Data file not found: {e}")
         
-
     def format_data(self):
         """
         Format mrket_data so that the index column is Datetime.
         """
-        self.daily_stocks["Date"] = pd.to_datetime(self.daily_stocks["Date"])
-        self.daily_index["Date"] = pd.to_datetime(self.daily_index["Date"])
-        self.intraday_stocks["Datetime"] = pd.to_datetime(self.intraday_stocks["Datetime"])
-        self.intraday_index["Datetime"] = pd.to_datetime(self.intraday_index["Datetime"])
         
-        self.daily_stocks.set_index("Date", inplace=True)
-        self.daily_index.set_index("Date", inplace=True)
-        self.intraday_stocks.set_index("Datetime", inplace=True)
-        self.intraday_index.set_index("Datetime", inplace=True)
+        self.daily_stocks[self.daily_stocks.columns[0]] = pd.to_datetime(self.daily_stocks[self.daily_stocks.columns[0]])
+        self.daily_index[self.daily_index.columns[0]] = pd.to_datetime(self.daily_index[self.daily_index.columns[0]])
+        self.intraday_stocks[self.intraday_stocks.columns[0]] = pd.to_datetime(self.intraday_stocks[self.intraday_stocks.columns[0]])
+        self.intraday_index[self.intraday_index.columns[0]] = pd.to_datetime(self.intraday_index[self.intraday_index.columns[0]])
+        
+        self.daily_stocks.set_index(self.daily_stocks.columns[0], inplace=True, drop=True)
+        self.daily_index.set_index(self.daily_index.columns[0], inplace=True, drop=True)
+        self.intraday_stocks.set_index(self.intraday_stocks.columns[0], inplace=True, drop=True)
+        self.intraday_index.set_index(self.intraday_index.columns[0], inplace=True, drop=True)
 
     def clean_data(self): 
         """
@@ -53,6 +53,7 @@ class DataManager:
         self.daily_index.ffill()
         self.intraday_stocks.ffill()
         self.intraday_index.ffill()
+        
 
     def return_data(self) -> MarketData: 
         return MarketData(self.daily_stocks, self.intraday_stocks, self.daily_index, self.intraday_index)
