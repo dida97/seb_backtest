@@ -291,6 +291,236 @@ class TradingAlgo:
         else:
             return False
 
+    def start_trading(self, date): 
+        backtest_day_stocks_data = self.intraday_stocks.loc[date, self.portfolio]
+        backtest_day_index_data = self.intraday_index.loc[date]
+        backtest_day_data = pd.concat([backtest_day_stocks_data, backtest_day_index_data], axis=1)
+        backtest_day_data = backtest_day_data[pd.to_datetime("09:35:00").time() : pd.to_datetime("15:45:00").time()] # TODO these should be parametrized
+
+        pct_returns = backtest_day_data.pct_change(fill_method=None).fillna(0)
+        pct_cumret = (pct_returns + 1).cumprod() - 1
+        
+        end_of_day_notional = pd.DataFrame()
+        for instrument in self.portfolio + ["^GSPC"]:
+            for spec in self.selected_stocks_with_scores:
+                if instrument in spec:
+                    size = spec[1]
+                    pos_sign = spec[2]
+            end_of_day_notional = pd.concat([end_of_day_notional,pd.DataFrame(((pct_cumret[instrument] * size * pos_sign) + size))],axis=1)
+
+        idx_cumret = pct_cumret["^GSPC"]
+        idx_end_of_day_notional = idx_cumret * self.bkt_config.notional + self.bkt_config.notional
+        if self.algo_params.INCLUDE_INDEX == False: 
+            end_of_day_notional = end_of_day_notional.drop(columns=["^GSPC"])
+
+        end_of_day_notional = self.intraday_position_management(end_of_day_notional)
+
+        prt_commissions = self.compute_commissions(date,end_of_day_notional)
+        idx_commissions = self.compute_commissions(date,idx_end_of_day_notional,is_index=True)
+        # compute commissions for the day  
+        prt_daily_commission = prt_commissions[0]
+        idx_daily_commission = idx_commissions[0]
+
+        # produce the list of trades of the day 
+        self.produce_list_of_trades_v2(end_of_day_notional, prt_commissions[1])        
+
+        intraday_prt_vol = end_of_day_notional["prt"].std() / self.bkt_config.notional
+        self.prt_intraday_volas.append(intraday_prt_vol)
+
+        intraday_idx_vol = idx_end_of_day_notional.std() / self.bkt_config.notional
+        self.idx_intraday_volas.append(intraday_idx_vol)
+ 
+
+        prt_trad_ret_gross = (end_of_day_notional["prt"].iloc[-1] - end_of_day_notional["prt"].iloc[0])
+
+        prt_trad_ret = (prt_trad_ret_gross) - prt_daily_commission
+        self.list_idx_ret.append(prt_trad_ret)
+
+        prt_perc_ret = (prt_trad_ret / end_of_day_notional["prt"].iloc[0])
+
+        prt_drawdown = (
+            end_of_day_notional["prt"] / end_of_day_notional["prt"].cummax() - 1
+        )
+
+        prt_max_drawdown = abs(prt_drawdown.min())
+
+        self.total_commission += prt_daily_commission
+
+
+        # comparison with index : 
+
+        idx_trad_ret_gross = (
+            idx_end_of_day_notional.iloc[-1] - idx_end_of_day_notional.iloc[0]
+        ) 
+
+        # idx_spread_costs = idx_end_of_day_notional.iloc[0]*0.0004
+        # idx_commission_costs = 6.58
+        # idx_trad_ret = (idx_trad_ret_gross) - idx_spread_costs - idx_commission_costs
+        idx_trad_ret = (idx_trad_ret_gross) - idx_daily_commission
+
+        idx_perc_ret = (
+            (idx_trad_ret / idx_end_of_day_notional.iloc[0]) 
+        )
+        idx_drawdown = (
+            idx_end_of_day_notional / idx_end_of_day_notional.cummax() - 1
+        )
+        idx_max_drawdown = abs(idx_drawdown.min())
+
+        # self.total_idx_spread += idx_spread_costs 
+        # self.total_idx_commission += idx_commission_costs
+        # self.idx_total_commission += (idx_spread_costs + idx_commission_costs)
+        self.idx_total_commission += idx_daily_commission
+
+        # self.idx_average_invested += (
+        #     self.global_sorted[-1][1] - self.idx_average_invested
+        # ) / self.days_count
+        
+
+        # print(f"Stats for trading day: {self.trading_day}")
+        # print(self.global_sorted)
+        self.operative_sets_list.append(self.portfolio)
+        # if "idx" in [instr[0] for instr in self.global_sorted]:
+        #     print("index in operative set!")
+        #     time.sleep(2)
+        # invested = sum([cmp[1] for cmp in self.global_sorted])
+        # print(f"total invested : {invested}")
+        # print(f"portfolio beta : {self.portfolio_beta}")
+
+        # print("Prt Stats")
+        # ic(prt_trad_ret)
+        # ic(prt_perc_ret)
+        # ic(prt_max_drawdown)
+        
+        # try:
+        self.total_gross_return += prt_trad_ret_gross
+        self.total_return += prt_trad_ret
+        self.idx_total_gross_return  += idx_trad_ret_gross 
+        self.idx_total_return += idx_trad_ret
+
+        # except TypeError:
+        #     self.total_return += 0 # TODO perché ho messo questo try except?
+        #     self.idx_total_return += 0 
+
+        self.total_perc_ret = self.total_return / self.notional # TODO cambiare questo : non investo sempre 1 milione
+        self.max_drawdown = (
+            prt_max_drawdown
+            if prt_max_drawdown > self.max_drawdown
+            else self.max_drawdown
+        )
+
+        self.total_idx_perc_ret = self.idx_total_return / self.notional
+        self.idx_max_drawdown = (
+            idx_max_drawdown
+            if idx_max_drawdown > self.idx_max_drawdown 
+            else self.idx_max_drawdown
+        )
+
+        # self.avg_drawdown += (self.max_drawdown - self.avg_drawdown) / self.days_count
+        # self.idx_avg_drawdown += (self.idx_max_drawdown - self.idx_avg_drawdown) / self.days_count
+
+        self.avg_drawdown += (prt_max_drawdown - self.avg_drawdown) / self.days_count
+        self.idx_avg_drawdown += (idx_max_drawdown - self.idx_avg_drawdown) / self.days_count
+
+        # print(f"Total Portfolio P&L: {round(self.total_return,2)} $")
+        # print(f"Total Portfolio %P&L: {round(total_perc_ret*100, 3)} %")
+        # print(f"Total Commission paid: {round(self.total_commission,2)} $")
+        # print(f"Total prt Max Drawdown: {round(self.max_drawdown*100, 3)} %")
+        # print(f"Avg prt Max Drawdown: {round(self.avg_drawdown*100, 3)} %")
+        # print(f"Avg portfolio Beta: {round(self.avg_portfolio_beta, 3)}")
+        self.avg_drawdown_list.append(self.avg_drawdown)
+        self.avg_idx_drawdown_list.append(self.idx_avg_drawdown)
+        self.max_drawdown_list.append(self.max_drawdown)
+        self.max_idx_drawdown_list.append(self.idx_max_drawdown)
+
+        #     print("self.avg_drawdown_list")
+        #     print(self.avg_drawdown_list)
+
+        #     print("self.avg_idx_drawdown_list")
+        #     print(self.avg_idx_drawdown_list)
+
+        #     print("self.max_drawdown_list")
+        #     print(self.max_drawdown_list)
+
+        #     print("self.max_idx_drawdown_list")
+        #     print(self.max_idx_drawdown_list)
+
+        #     print(sum(self.max_drawdown_list) / len(self.max_drawdown_list))       
+
+        #     sys.exit()
+        # ic(self.total_return)
+        # ic(total_perc_ret)
+        # ic(self.total_commission)
+        # ic(self.max_drawdown)
+        # ic(self.avg_drawdown)
+        # ic(self.avg_portfolio_beta)
+        # print("\n")
+        # print("Idx only stats")
+        # ic(idx_trad_ret)
+        # ic(idx_perc_ret)
+        # ic(idx_max_drawdown)
+
+        # print(f"Total Index P&L: {round(self.idx_total_return,2)} $")
+        # print(f"Total Index %P&L: {round(total_idx_perc_ret*100, 3)} %")
+        # print(f"Total Commission paid: {round(self.idx_total_commission,2)} $")
+        # print(f"Total Idx Max Drawdown: {round(self.idx_max_drawdown*100, 3)} %")
+        # print(f"Avg Idx Max Drawdown: {round(self.idx_avg_drawdown*100, 3)} %")
+
+        # ic(self.idx_total_return)
+        # ic(self.idx_total_commission)
+        # ic(total_idx_perc_ret)
+        # ic(self.idx_max_drawdown)
+        # ic(self.idx_avg_drawdown)
+
+
+        this_day_prt_return = pd.DataFrame.from_dict({"date" : self.trading_day, "ret":prt_perc_ret}, orient="index")
+        self.daily_prt_returns_list = pd.concat([self.daily_prt_returns_list, this_day_prt_return], axis=1)
+
+        this_day_idx_return = pd.DataFrame.from_dict({"date" : self.trading_day, "ret":idx_perc_ret}, orient="index")
+        self.daily_idx_returns_list = pd.concat([self.daily_idx_returns_list, this_day_idx_return], axis=1)
+
+    def compute_commissions(self,date, portfolio_data:pd.DataFrame, is_index=False):
+        if not is_index:
+            instruments = portfolio_data.columns.to_list()[:-1]
+            prices = self.intraday_stocks.loc[date, instruments].iloc[0,:]
+            shares_n = np.ceil((portfolio_data.iloc[0,:-1].divide(prices)))
+
+        else:  
+            prices = self.intraday_index.loc[date].iloc[0]
+            shares_n = np.ceil((portfolio_data.iloc[0]/ prices))
+
+
+        COMMISSION_PER_TRADE = 0.02
+        TRADES_PER_SHARE = 2
+        daily_commission = (shares_n * COMMISSION_PER_TRADE*TRADES_PER_SHARE)
+        
+        return daily_commission.sum(), daily_commission 
+
+
+    def intraday_position_management(self, notional_invested:pd.DataFrame, is_index_only=False): 
+        '''
+        '''
+        notional_invested["prt"] = notional_invested.sum(axis=1)
+
+        drawdown = notional_invested["prt"] / notional_invested["prt"].cummax() - 1
+        drawdown_filter = drawdown[(abs(drawdown) >= 0.6*abs(self.idx_avg_drawdown)) & (abs(drawdown) > 0.0)]
+
+        if self.idx_avg_drawdown != 0.0 and not drawdown_filter.empty:
+            notional_invested = notional_invested.loc[:drawdown_filter.index[0]]
+        
+        starting_notional = notional_invested["prt"].iloc[0]
+        perc_cumret = (notional_invested["prt"] / starting_notional) - 1 
+
+        profits = notional_invested[perc_cumret >= 0.006] # XXX parametri importanti da valutare 
+        losses = notional_invested[perc_cumret <= -0.003]
+        filtered_notional = pd.concat([profits, losses], axis=0)
+        # filtered_notional = losses.copy()
+        if filtered_notional.empty:
+            return notional_invested
+        filtered_notional = filtered_notional.sort_index()
+        notional_invested = notional_invested.loc[:filtered_notional.index[0]]
+        return notional_invested
+
+
     def run(self, date): 
         # Set the start dates for daily and intraday analyses 
 
@@ -313,6 +543,7 @@ class TradingAlgo:
         self.compute_portfolio_beta()
 
         # START_TRADING
+        self.start_trading(date)
 
         # Check if the ranking dictionary needs to be reset
         if self.reset_daily_ranking(date): 
